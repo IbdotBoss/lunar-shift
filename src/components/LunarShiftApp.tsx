@@ -214,12 +214,11 @@ export default function LunarShiftApp() {
             transition={{ duration: 0.5, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
             className={`group relative w-full rounded-2xl border transition-all duration-300 ${
               inputFocused
-                ? 'border-gold-dim/40 bg-deep/90 shadow-[0_0_30px_-8px_oklch(0.76_0.12_80/0.08)]'
+                ? 'border-gold-dim/40 bg-deep/90 shadow-[0_0_30px_-8px_oklch(0.76 0.12 80/0.08)]'
                 : 'border-neutral-800/60 bg-deep/60 backdrop-blur-xl'
             }`}
-            onClick={() => document.getElementById('dob-input')?.focus()}
           >
-            <div className="px-5 pt-4 pb-2 cursor-text">
+            <div className="px-5 pt-4 pb-2">
               <label
                 htmlFor="dob-input"
                 className="block text-[10px] font-medium tracking-widest uppercase cursor-text"
