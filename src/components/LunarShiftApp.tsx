@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Copy, Sparkle } from '@phosphor-icons/react'
+import { CopyButton } from './CopyButton'
 import Galaxy from './Galaxy'
 import {
   gregorianToHijri,
@@ -147,14 +147,11 @@ export default function LunarShiftApp() {
     return results
   }, [hijriDob])
 
-  // Copy with feedback
-  const [copied, setCopied] = useState(false)
-  const copyHijri = useCallback(async () => {
-    if (!hijriDob) return
-    await navigator.clipboard.writeText(hijriDisplay(hijriDob))
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }, [hijriDob])
+  // Copy hijri date string
+  const hijriCopyText = useMemo(
+    () => (hijriDob ? hijriDisplay(hijriDob) : ''),
+    [hijriDob]
+  )
 
   // Calculate actual drift from the data
   const drift = useMemo(() => {
@@ -320,24 +317,10 @@ export default function LunarShiftApp() {
                 {new Date(dateInputValue).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
               </p>
             </div>
-            <button
-              onClick={copyHijri}
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-medium transition-all duration-300 active:scale-[0.96] ${
-                copied
-                  ? 'bg-emerald-500/10 text-emerald-400'
-                  : 'border border-neutral-800/60 bg-deep/40 text-neutral-500 hover:border-neutral-700 hover:text-neutral-300'
-              }`}
-              style={{ fontFamily: 'var(--font-inria)' }}
-            >
-              {copied ? (
-                <>✓&nbsp;&nbsp;Copied</>
-              ) : (
-                <>
-                  <Copy size={12} weight="regular" />
-                  <span>Copy</span>
-                </>
-              )}
-            </button>
+            <CopyButton
+              content={hijriCopyText}
+              className="h-8 w-8 rounded-lg border border-neutral-800/60 bg-deep/40 text-neutral-500 hover:border-neutral-700 hover:text-neutral-300 outline-none"
+            />
           </div>
         </Reveal>
 
@@ -477,14 +460,6 @@ export default function LunarShiftApp() {
                         ? "it's your hijri birthday"
                         : `${dayOfWeek(nextBirthday.date)}, ${formatDateShort(nextBirthday.date)}`}
                     </p>
-                  </div>
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full border border-neutral-800/40">
-                    <Sparkle
-                      size={18}
-                      weight="regular"
-                      className={`${daysUntilNext === 0 ? 'animate-breathe' : ''}`}
-                      style={{ color: 'oklch(0.76 0.12 80 / 0.6)' }}
-                    />
                   </div>
                 </div>
 
