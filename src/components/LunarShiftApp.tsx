@@ -1,17 +1,15 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Moon, Clock, Copy, Sparkle, CalendarDots } from '@phosphor-icons/react'
+import { Copy, Sparkle } from '@phosphor-icons/react'
 import {
   gregorianToHijri,
   hijriDisplay,
   hijriDisplayArabic,
-  hijriCompact,
   findHijriBirthdayInYear,
   calcAge,
   daysUntil,
-  formatDate,
   formatDateShort,
   dayOfWeek,
   dobToUrlParam,
@@ -23,25 +21,56 @@ import {
 const TODAY = new Date()
 TODAY.setHours(0, 0, 0, 0)
 
-function Staggered({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+/* ──────────────────────────────────────────
+   Number ticker — animates 0 → target
+   ────────────────────────────────────────── */
+function Counter({ to, duration = 800 }: { to: number; duration?: number }) {
+  const [val, setVal] = useState(0)
+  const started = useRef(false)
+
+  useEffect(() => {
+    if (started.current) return
+    started.current = true
+    const t0 = performance.now()
+    const tick = (now: number) => {
+      const p = Math.min((now - t0) / duration, 1)
+      const ease = 1 - (1 - p) * (1 - p) // ease-out quadratic
+      setVal(Math.floor(ease * to))
+      if (p < 1) requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+  }, [to, duration])
+
+  return <>{val}</>
+}
+
+/* ──────────────────────────────────────────
+   Staggered child fade-up
+   ────────────────────────────────────────── */
+function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 8 }}
-      transition={{ duration: 0.4, delay: delay * 0.08, ease: [0.4, 0, 0.2, 1] }}
+      transition={{ duration: 0.5, delay: delay * 0.1, ease: [0.22, 1, 0.36, 1] }}
     >
       {children}
     </motion.div>
   )
 }
 
+/* ──────────────────────────────────────────
+   Main
+   ────────────────────────────────────────── */
 export default function LunarShiftApp() {
   const [dob, setDob] = useState<Date | null>(null)
   const [dateInputValue, setDateInputValue] = useState('')
+  const [inputFocused, setInputFocused] = useState(false)
 
   // Read URL on mount
   useEffect(() => {
+    if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
     const dobParam = params.get('dob')
     if (dobParam) {
@@ -53,8 +82,8 @@ export default function LunarShiftApp() {
     }
   }, [])
 
-  // Update URL when dob changes
   const updateUrl = useCallback((d: Date | null) => {
+    if (typeof window === 'undefined') return
     const url = new URL(window.location.href)
     if (d) url.searchParams.set('dob', dobToUrlParam(d))
     else url.searchParams.delete('dob')
@@ -64,7 +93,7 @@ export default function LunarShiftApp() {
   const handleDateChange = useCallback((value: string) => {
     setDateInputValue(value)
     const parts = value.split('-').map(Number)
-    if (parts.length === 3 && parts[0] > 1900 && parts[0] < 2100) {
+    if (parts.length === 3 && parts[0] >= 1935 && parts[0] < 2077) {
       const d = new Date(parts[0], parts[1] - 1, parts[2])
       if (!isNaN(d.getTime())) {
         setDob(d)
@@ -87,9 +116,9 @@ export default function LunarShiftApp() {
     return Math.max(0, age)
   }, [hijriDob])
 
+  // Next birthday: try current year first
   const nextBirthday = useMemo(() => {
     if (!hijriDob) return null
-    // Try current year first, then next
     let b = findHijriBirthdayInYear(hijriDob.month, hijriDob.day, TODAY.getFullYear())
     if (b && b.date >= TODAY) return b
     return findHijriBirthdayInYear(hijriDob.month, hijriDob.day, TODAY.getFullYear() + 1)
@@ -100,6 +129,7 @@ export default function LunarShiftApp() {
     return daysUntil(nextBirthday.date, TODAY)
   }, [nextBirthday])
 
+  // Timeline: past 3 → future 7
   const birthdays = useMemo(() => {
     if (!hijriDob) return []
     const results: { date: Date; hijriYear: number; passed: boolean }[] = []
@@ -116,332 +146,433 @@ export default function LunarShiftApp() {
     return results
   }, [hijriDob])
 
-  const copyHijri = useCallback(() => {
+  // Copy with feedback
+  const [copied, setCopied] = useState(false)
+  const copyHijri = useCallback(async () => {
     if (!hijriDob) return
-    navigator.clipboard.writeText(hijriDisplay(hijriDob))
+    await navigator.clipboard.writeText(hijriDisplay(hijriDob))
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
   }, [hijriDob])
 
-  // Drift calculation: average days per year shift
+  // Calculate actual drift from the data
   const drift = useMemo(() => {
     if (birthdays.length < 2) return 11
-    // Simple: compare first and last birthday in our range
-    const first = birthdays[0]
-    const last = birthdays[birthdays.length - 1]
+    const past = birthdays.filter((b) => b.date < TODAY)
+    if (past.length < 2) return 11
+    const first = past[0]
+    const last = past[past.length - 1]
     const yearSpan = last.hijriYear - first.hijriYear
-    const dayShift = Math.round((first.date.getTime() - last.date.getTime()) / 86400000)
     if (yearSpan <= 0) return 11
-    return Math.round((dayShift / yearSpan))
+    const dayShift = Math.round((first.date.getTime() - last.date.getTime()) / 86400000)
+    return Math.round(dayShift / yearSpan)
   }, [birthdays])
 
-  // ─── Entry State ───────────────────────────
+  // ─── ENTRY STATE ─────────────────────────
   if (!dob) {
     return (
-      <div className="flex min-h-[100dvh] flex-col items-center justify-center px-6 py-12">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8 }}
-          className="flex flex-col items-center gap-8"
-        >
-          {/* Brand */}
-          <div className="flex flex-col items-center gap-1">
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
-              className="text-5xl font-semibold tracking-tight text-zinc-100 sm:text-6xl"
-            >
-              Lunar Shift
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.15 }}
-              className="text-sm text-zinc-500"
-            >
-              your hijri birthday, discovered
-            </motion.p>
-          </div>
+      <div className="relative flex min-h-[100dvh] flex-col items-center justify-center overflow-hidden px-6 py-12">
+        {/* Atmospheric background — two soft radial glows */}
+        <div className="pointer-events-none absolute inset-0 -z-0">
+          <div
+            className="animate-breathe absolute left-1/2 top-1/4 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[120px] opacity-30"
+            style={{ background: 'radial-gradient(circle, oklch(0.76 0.12 80 / 0.15), transparent 70%)' }}
+          />
+          <div
+            className="absolute left-1/4 top-2/3 h-[400px] w-[400px] rounded-full blur-[100px] opacity-20"
+            style={{ background: 'radial-gradient(circle, oklch(0.4 0.05 270 / 0.2), transparent 70%)' }}
+          />
+        </div>
 
-          {/* Date Input */}
+        <div className="relative z-10 flex w-full max-w-sm flex-col items-center gap-10">
+          {/* Brand — oversized, sculptural */}
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            className="w-full max-w-xs"
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            className="flex flex-col items-center gap-3"
           >
-            <label
-              htmlFor="dob-input"
-              className="mb-2 block text-left text-xs font-medium tracking-wide text-zinc-500 uppercase"
+            <h1 className="text-5xl font-bold tracking-tight leading-none sm:text-6xl md:text-7xl"
+              style={{ fontFamily: 'var(--font-syne)', letterSpacing: '-0.03em' }}
             >
-              Your date of birth
-            </label>
-            <input
-              id="dob-input"
-              type="date"
-              value={dateInputValue}
-              onChange={(e) => handleDateChange(e.target.value)}
-              max={dobToUrlParam(TODAY)}
-              className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 text-zinc-100 outline-none transition-colors focus:border-amber-400/50 focus:ring-1 focus:ring-amber-400/20 [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:brightness-125"
-              autoFocus
-              aria-label="Gregorian date of birth"
-            />
+              Lunar&nbsp;Shift
+            </h1>
+            <p
+              className="text-center text-sm leading-relaxed max-w-[280px] text-neutral-400"
+              style={{ fontFamily: 'var(--font-inria)' }}
+            >
+              your birthday moves 11 days every year.
+              <br />
+              <span className="text-neutral-500">discover where it lands in the lunar calendar.</span>
+            </p>
           </motion.div>
 
-          {/* Why it matters */}
+          {/* Date input */}
+          <motion.div
+            initial={{ opacity: 0, y: 16, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+            className={`group relative w-full rounded-2xl border transition-all duration-300 ${
+              inputFocused
+                ? 'border-gold-dim/40 bg-deep/90 shadow-[0_0_30px_-8px_oklch(0.76_0.12_80/0.08)]'
+                : 'border-neutral-800/60 bg-deep/60 backdrop-blur-xl'
+            }`}
+          >
+            <div className="px-5 pt-4 pb-2">
+              <label
+                htmlFor="dob-input"
+                className="block text-[10px] font-medium tracking-widest uppercase"
+                style={{ fontFamily: 'var(--font-inria)', color: inputFocused ? 'oklch(0.76 0.12 80)' : 'oklch(0.5 0.01 285)' }}
+              >
+                Date of birth
+              </label>
+            </div>
+            <div className="px-4 pb-5">
+              <input
+                id="dob-input"
+                type="date"
+                value={dateInputValue}
+                onChange={(e) => handleDateChange(e.target.value)}
+                max={dobToUrlParam(TODAY)}
+                min="1935-01-01"
+                onFocus={() => setInputFocused(true)}
+                onBlur={() => setInputFocused(false)}
+                className="w-full rounded-lg bg-transparent px-4 py-3 text-base text-neutral-50 outline-none transition-all duration-300"
+                style={{ fontFamily: 'var(--font-inria)' }}
+                autoFocus
+              />
+            </div>
+          </motion.div>
+
+          {/* Moon dots visual motif */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.5 }}
-            className="flex flex-col items-center gap-3 text-center"
+            transition={{ duration: 0.8, delay: 0.35 }}
+            className="flex items-center gap-2"
           >
-            <div className="flex items-center gap-2 text-zinc-600">
-              <Clock size={14} weight="regular" />
-              <span className="text-xs">
-                the hijri year is ~354 days — about 11 shorter
-              </span>
-            </div>
-            <div className="flex items-center gap-2 text-zinc-600">
-              <Moon size={14} weight="regular" />
-              <span className="text-xs">
-                your hijri birthday drifts through the gregorian calendar
-              </span>
-            </div>
+            {[0, 1, 2, 3, 4].map((i) => (
+              <motion.div
+                key={i}
+                layout
+                className="h-1 rounded-full"
+                style={{
+                  width: 16 + i * 4,
+                  background: i < 3 ? 'oklch(0.76 0.12 80)' : 'oklch(0.35 0.01 285)',
+                  transition: `all 0.4s ease ${i * 0.08}s`,
+                }}
+              />
+            ))}
           </motion.div>
 
-          {/* Version badge */}
+          {/* Version */}
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.3, delay: 0.7 }}
-            className="mt-8 font-mono text-[10px] tracking-widest text-zinc-700 uppercase"
+            transition={{ duration: 0.5, delay: 0.5 }}
+            className="font-mono text-[10px] tracking-widest uppercase text-neutral-700"
           >
-            v0.1.0 · umm al-qura · beta
+            v0.1.0 · umm al-qura
           </motion.p>
-        </motion.div>
+        </div>
       </div>
     )
   }
 
-  // ─── Dashboard ────────────────────────────
+  // ─── DASHBOARD ───────────────────────────
   return (
-    <div className="flex min-h-[100dvh] flex-col px-4 py-8 sm:px-6 sm:py-12">
-      <div className="mx-auto w-full max-w-2xl space-y-6">
-        {/* Header — compact */}
-        <Staggered>
+    <div className="relative flex min-h-[100dvh] flex-col overflow-hidden">
+      {/* Background */}
+      <div className="pointer-events-none fixed inset-0 -z-0">
+        <div className="absolute left-1/2 top-0 h-[500px] w-[500px] -translate-x-1/2 rounded-full blur-[140px] opacity-20"
+          style={{ background: 'radial-gradient(circle, oklch(0.76 0.12 80 / 0.12), transparent 70%)' }}
+        />
+      </div>
+
+      <div className="relative z-10 mx-auto w-full max-w-lg px-5 py-8 sm:px-6 sm:py-10 space-y-6">
+        {/* Header */}
+        <Reveal>
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-semibold tracking-tight text-zinc-100">
-                Lunar Shift
-              </h1>
               <button
                 onClick={() => {
                   setDob(null)
                   setDateInputValue('')
                   updateUrl(null)
                 }}
-                className="mt-1 text-xs text-zinc-500 transition-colors hover:text-zinc-300"
+                className="text-xs text-neutral-500 transition-colors hover:text-neutral-300 font-medium"
+                style={{ fontFamily: 'var(--font-inria)' }}
               >
-                ← change date &nbsp;{formatDate(dob)}
+                ← change
               </button>
+              <p className="mt-0.5 text-[11px] text-neutral-600"
+                style={{ fontFamily: 'var(--font-inria)' }}
+              >
+                {new Date(dateInputValue).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+              </p>
             </div>
             <button
               onClick={copyHijri}
-              className="flex items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900/50 px-3 py-1.5 text-xs text-zinc-400 transition-all hover:border-zinc-700 hover:text-zinc-200 active:scale-[0.97]"
-              aria-label="Copy hijri date"
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-medium transition-all duration-300 active:scale-[0.96] ${
+                copied
+                  ? 'bg-emerald-500/10 text-emerald-400'
+                  : 'border border-neutral-800/60 bg-deep/40 text-neutral-500 hover:border-neutral-700 hover:text-neutral-300'
+              }`}
+              style={{ fontFamily: 'var(--font-inria)' }}
             >
-              <Copy size={12} weight="regular" />
-              <span>Copy date</span>
+              {copied ? (
+                <>✓&nbsp;&nbsp;Copied</>
+              ) : (
+                <>
+                  <Copy size={12} weight="regular" />
+                  <span>Copy</span>
+                </>
+              )}
             </button>
           </div>
-        </Staggered>
+        </Reveal>
 
-        {/* Hijri DOB — hero */}
-        <Staggered delay={1}>
-          <div className="rounded-xl border border-zinc-800/60 bg-zinc-950/50 p-6 text-center">
-            <p className="text-xs tracking-wide text-zinc-500 uppercase">
-              your hijri date of birth
-            </p>
-            <motion.p
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5, delay: 0.15 }}
-              className="my-3 text-3xl font-semibold tracking-tight text-amber-400 sm:text-4xl"
-            >
-              {hijriDob && hijriDisplay(hijriDob)}
-            </motion.p>
-            {hijriDob && (
-              <p className="font-mono text-sm text-zinc-500">
-                {hijriDisplayArabic(hijriDob)}
-              </p>
-            )}
-            <p className="mt-2 text-xs text-zinc-600">
-              gregorian: {formatDate(dob)} · {dayOfWeek(dob)}
-            </p>
-          </div>
-        </Staggered>
-
-        {/* Age Comparison */}
+        {/* Hijri DOB — hero reveal with staggered characters */}
         <AnimatePresence mode="wait">
-          {gregorianAge > 0 && (
-            <Staggered delay={2}>
-              <div className="grid grid-cols-2 gap-3">
-                {/* Solar Age */}
-                <div className="rounded-xl border border-zinc-800/60 bg-zinc-950/30 p-5">
-                  <div className="font-mono text-3xl font-medium tracking-tight text-zinc-100">
-                    {gregorianAge}
-                  </div>
-                  <p className="mt-1 text-xs text-zinc-500">
-                    solar age
-                  </p>
-                  <p className="mt-0.5 text-[10px] font-medium tracking-wide text-zinc-600 uppercase">
-                    {gregorianAge * 365} days
-                  </p>
-                </div>
+          {hijriDob && (
+            <Reveal delay={1}>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex flex-col items-center py-6 text-center"
+              >
+                <p
+                  className="text-[10px] tracking-[0.2em] uppercase mb-3"
+                  style={{ color: 'oklch(0.5 0.01 285)', fontFamily: 'var(--font-inria)' }}
+                >
+                  Your Hijri date of birth
+                </p>
 
-                {/* Lunar Age */}
-                <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-5">
-                  <div className="font-mono text-3xl font-medium tracking-tight text-amber-400">
-                    {hijriAge}
-                  </div>
-                  <p className="mt-1 text-xs text-zinc-400">
-                    lunar age
-                  </p>
-                  <p className="mt-0.5 text-[10px] font-medium tracking-wide text-zinc-600 uppercase">
-                    {hijriAge * 354} days
-                  </p>
-                </div>
-              </div>
-            </Staggered>
+                {/* Display font — the moment */}
+                <motion.h2
+                  className="text-4xl font-bold tracking-tight sm:text-5xl"
+                  style={{
+                    fontFamily: 'var(--font-syne)',
+                    letterSpacing: '-0.03em',
+                    lineHeight: 1.0,
+                    color: 'oklch(0.78 0.12 80)',
+                  }}
+                  initial={{ opacity: 0, scale: 0.96, filter: 'blur(8px)' }}
+                  animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+                  transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  {hijriDisplay(hijriDob)}
+                </motion.h2>
+
+                {/* Arabic */}
+                <motion.p
+                  className="mt-2 text-lg text-neutral-500"
+                  lang="ar"
+                  dir="auto"
+                  style={{ fontFamily: 'var(--font-syne)' }}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                >
+                  {hijriDisplayArabic(hijriDob)}
+                </motion.p>
+              </motion.div>
+            </Reveal>
           )}
         </AnimatePresence>
 
-        {/* Countdown to Next Hijri Birthday */}
+        {/* Age comparison */}
+        <AnimatePresence mode="wait">
+          {gregorianAge > 0 && hijriAge > 0 && (
+            <Reveal delay={3}>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-2xl border border-neutral-800/40 bg-deep/30 p-5 text-center">
+                  <div
+                    className="font-mono text-4xl font-medium tracking-tight"
+                    style={{ fontVariantNumeric: 'tabular-nums' }}
+                  >
+                    <Counter to={gregorianAge} />
+                  </div>
+                  <p
+                    className="mt-1 text-[10px] tracking-widest uppercase text-neutral-500"
+                  >
+                    solar years
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-gold-dim/20 bg-gold-[0.03] p-5 text-center">
+                  <div
+                    className="font-mono text-4xl font-medium tracking-tight"
+                    style={{ color: 'oklch(0.76 0.12 80)', fontVariantNumeric: 'tabular-nums' }}
+                  >
+                    <Counter to={hijriAge} />
+                  </div>
+                  <p
+                    className="mt-1 text-[10px] tracking-widest uppercase text-neutral-500"
+                  >
+                    lunar years
+                  </p>
+                </div>
+              </div>
+            </Reveal>
+          )}
+        </AnimatePresence>
+
+        {/* Drift explanation */}
+        <AnimatePresence mode="wait">
+          {gregorianAge > 0 && (
+            <Reveal delay={4}>
+              <div
+                className="flex items-center justify-center gap-2 rounded-2xl border border-neutral-800/30 bg-deep/20 px-4 py-3 text-center"
+              >
+                <div className="h-1 w-6 rounded-full" style={{ background: 'oklch(0.76 0.12 80 / 0.4)' }} />
+                <p className="text-xs text-neutral-500 leading-relaxed">
+                  the hijri year is ~354 days — about <span className="text-neutral-300 font-medium">11 shorter</span>
+                  than the solar year. that's why your hijri birthday drifts.
+                </p>
+                <div className="h-1 w-6 rounded-full" style={{ background: 'oklch(0.76 0.12 80 / 0.4)' }} />
+              </div>
+            </Reveal>
+          )}
+        </AnimatePresence>
+
+        {/* Next birthday countdown */}
         <AnimatePresence mode="wait">
           {nextBirthday && daysUntilNext !== null && (
-            <Staggered delay={3}>
-              <div className="rounded-xl border border-zinc-800/60 bg-zinc-950/30 p-5">
+            <Reveal delay={5}>
+              <div className="rounded-2xl border border-neutral-800/40 bg-deep/30 px-5 py-5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs tracking-wide text-zinc-500 uppercase">
+                    <p className="text-[10px] tracking-[0.2em] uppercase text-neutral-500">
                       next {hijriDob!.day} {MONTH_NAMES[hijriDob!.month]}
                     </p>
-                    <p className="mt-2 font-mono text-4xl font-medium tracking-tight text-zinc-100">
+                    <div
+                      className="mt-2 font-mono text-4xl font-medium tracking-tight"
+                      style={{ color: 'oklch(0.76 0.12 80)', fontVariantNumeric: 'tabular-nums' }}
+                    >
+                      {daysUntilNext === 0 ? (
+                        <motion.span
+                          animate={{ opacity: [1, 0.6, 1] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                        >
+                          today
+                        </motion.span>
+                      ) : (
+                        <><Counter to={daysUntilNext} />d</>
+                      )}
+                    </div>
+                    <p className="mt-1 text-[11px] text-neutral-500"
+                      style={{ fontFamily: 'var(--font-inria)' }}
+                    >
                       {daysUntilNext === 0
-                        ? 'today'
-                        : `${daysUntilNext}d`}
-                    </p>
-                    <p className="mt-1 text-xs text-zinc-500">
-                      {daysUntilNext === 0
-                        ? "🌙 it's your hijri birthday!"
+                        ? "it's your hijri birthday"
                         : `${dayOfWeek(nextBirthday.date)}, ${formatDateShort(nextBirthday.date)}`}
                     </p>
                   </div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full border border-amber-400/20 bg-amber-400/10">
-                    <Sparkle size={20} weight="regular" className="text-amber-400" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full border border-neutral-800/40">
+                    <Sparkle
+                      size={18}
+                      weight="regular"
+                      className={`${daysUntilNext === 0 ? 'animate-breathe' : ''}`}
+                      style={{ color: 'oklch(0.76 0.12 80 / 0.6)' }}
+                    />
                   </div>
                 </div>
-              </div>
-            </Staggered>
-          )}
-        </AnimatePresence>
 
-        {/* Drift Explanation */}
-        <AnimatePresence mode="wait">
-          {drift && drift > 0 && (
-            <Staggered delay={4}>
-              <div className="rounded-lg border border-zinc-800/40 bg-zinc-900/20 px-5 py-4">
-                <div className="flex items-center gap-2">
-                  <CalendarDots size={16} weight="regular" className="text-zinc-500" />
-                  <p className="text-xs text-zinc-400">
-                    your hijri birthday shifts back ~{drift} days each solar year
-                  </p>
+                {/* Drift indicator */}
+                <div className="mt-4 flex items-center gap-1 border-t border-neutral-800/30 pt-3">
+                  <span className="text-[10px] text-neutral-600"
+                    style={{ fontFamily: 'var(--font-inria)' }}
+                  >
+                    shifts ~{drift} days earlier each year
+                  </span>
                 </div>
               </div>
-            </Staggered>
+            </Reveal>
           )}
         </AnimatePresence>
 
-        {/* Birthdays Timeline */}
+        {/* Birthday timeline */}
         <AnimatePresence mode="wait">
           {birthdays.length > 0 && (
-            <Staggered delay={5}>
-              <div className="rounded-xl border border-zinc-800/60 bg-zinc-950/30">
-                <div className="border-b border-zinc-800/60 px-5 py-4">
-                  <p className="text-xs tracking-wide text-zinc-500 uppercase">
-                    birthday timeline
-                  </p>
-                  <p className="mt-0.5 text-[10px] font-medium tracking-wide text-zinc-600 uppercase">
-                    {hijriDob!.day} {MONTH_NAMES[hijriDob!.month]} across years
+            <Reveal delay={6}>
+              <div className="rounded-2xl border border-neutral-800/40 bg-deep/30">
+                <div className="border-b border-neutral-800/30 px-5 py-4">
+                  <p className="text-[10px] tracking-[0.2em] uppercase text-neutral-600">
+                    Birthday drift
                   </p>
                 </div>
-                <div className="divide-y divide-zinc-800/40">
-                  {birthdays.map((b, i) => {
+
+                <div className="divide-y divide-neutral-800/20">
+                  {birthdays.map((b) => {
                     const isToday = b.date.getTime() === TODAY.getTime()
                     const isPast = b.passed
                     const age = b.hijriYear - hijriDob!.year
 
                     return (
-                      <div
+                      <motion.div
                         key={b.hijriYear}
-                        className={`flex items-center justify-between px-5 py-3.5 transition-colors hover:bg-zinc-900/30 ${
-                          isToday ? 'bg-amber-400/5' : ''
-                        }`}
+                        className={`flex items-center justify-between px-5 py-3.5 transition-colors ${
+                          isToday
+                            ? 'bg-gold/[0.04]'
+                            : 'hover:bg-neutral-900/20'
+                        } ${isPast ? 'opacity-40' : ''}`}
+                        whileHover={!isPast ? { x: 2 } : {}}
                       >
                         <div className="flex items-center gap-3">
                           <div
                             className={`flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-mono ${
                               isToday
-                                ? 'bg-amber-400 text-zinc-950'
+                                ? 'bg-gold-dim/20 text-gold-dim'
                                 : isPast
-                                  ? 'bg-zinc-800 text-zinc-500'
-                                  : 'bg-zinc-800/60 text-zinc-400'
+                                  ? 'bg-neutral-800/40 text-neutral-600'
+                                  : 'bg-neutral-800/30 text-neutral-500'
                             }`}
                           >
                             {b.date.getFullYear().toString().slice(2)}
                           </div>
                           <div>
-                            <p className="text-sm text-zinc-200">
+                            <p className="text-sm text-neutral-200"
+                              style={{ fontFamily: 'var(--font-inria)' }}
+                            >
                               {formatDateShort(b.date)}, {b.date.getFullYear()}
                             </p>
-                            <p
-                              className="text-[10px] text-zinc-600"
-                            >
-                              {dayOfWeek(b.date)} · hijri age {age}
+                            <p className="text-[10px] text-neutral-600">
+                              {dayOfWeek(b.date)} · lunar age {age}
                             </p>
                           </div>
                         </div>
                         <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                          className={`rounded-full px-2.5 py-0.5 text-[10px] font-medium ${
                             isToday
-                              ? 'bg-amber-400/15 text-amber-400'
+                              ? 'bg-gold-dim/15 text-gold-dim'
                               : isPast
-                                ? 'bg-zinc-800/60 text-zinc-500'
-                                : 'bg-zinc-800/40 text-zinc-500'
+                                ? 'bg-neutral-800/40 text-neutral-600'
+                                : 'bg-neutral-800/30 text-neutral-500'
                           }`}
+                          style={{ fontFamily: 'var(--font-inria)' }}
                         >
-                          {isToday
-                            ? '🌙 today'
-                            : isPast
-                              ? 'passed'
-                              : 'upcoming'}
+                          {isToday ? '🌙 today' : isPast ? 'passed' : 'upcoming'}
                         </span>
-                      </div>
+                      </motion.div>
                     )
                   })}
                 </div>
               </div>
-            </Staggered>
+            </Reveal>
           )}
         </AnimatePresence>
 
         {/* Disclaimer */}
-        <Staggered delay={6}>
-          <p className="text-center text-[10px] leading-relaxed text-zinc-700">
-            Calculated using the Umm al-Qura calendar (Saudi Arabia). Actual dates may vary
-            by ±1 day depending on local moon-sighting traditions.
+        <Reveal delay={7}>
+          <p
+            className="pb-8 text-center text-[10px] leading-relaxed"
+            style={{ color: 'oklch(0.38 0.005 285)' }}
+          >
+            Calculated using the Umm al-Qura calendar (Saudi Arabia).
+            Actual dates may vary by ±1 day depending on local moon-sighting traditions.
           </p>
-        </Staggered>
+        </Reveal>
       </div>
     </div>
   )

@@ -1,12 +1,29 @@
 import type { Metadata, Viewport } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { Syne, Inria_Sans, Geist_Mono } from 'next/font/google'
 import './globals.css'
 
-const geistSans = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
-const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' })
+const syne = Syne({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-syne',
+  display: 'swap',
+})
+
+const inriaSans = Inria_Sans({
+  subsets: ['latin'],
+  weight: ['300', '400', '700'],
+  variable: '--font-inria',
+  display: 'swap',
+})
+
+const geistMono = Geist_Mono({
+  subsets: ['latin'],
+  variable: '--font-mono',
+  display: 'swap',
+})
 
 export const viewport: Viewport = {
-  themeColor: '#0a0a0f',
+  themeColor: '#0e0e12',
   colorScheme: 'dark',
 }
 
@@ -29,8 +46,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        style={{ fontSynthesis: 'none', textRendering: 'optimizeLegibility' }}
+        className={`${syne.variable} ${inriaSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
       </body>
