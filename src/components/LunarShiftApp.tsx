@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Copy, Sparkle } from '@phosphor-icons/react'
-import { StarsBackground } from './StarsBackground'
+import Galaxy from './Galaxy'
 import {
   gregorianToHijri,
   hijriDisplay,
@@ -173,8 +173,19 @@ export default function LunarShiftApp() {
   if (!dob) {
     return (
       <div className="relative flex min-h-[100dvh] flex-col items-center justify-center overflow-hidden px-6 py-12">
-        {/* Star field background */}
-        <StarsBackground count={60} factor={0.06} speed={40} />
+        {/* Galaxy background */}
+        <Galaxy
+          hueShift={42}
+          density={0.55}
+          starSpeed={0.3}
+          speed={0.6}
+          glowIntensity={0.25}
+          saturation={0.15}
+          mouseRepulsion={false}
+          twinkleIntensity={0.4}
+          disableAnimation={false}
+          transparent
+        />
 
         <div className="relative z-10 flex w-full max-w-sm flex-col items-center gap-10">
           {/* Brand — oversized, sculptural */}
@@ -274,8 +285,18 @@ export default function LunarShiftApp() {
   // ─── DASHBOARD ───────────────────────────
   return (
     <div className="relative flex min-h-[100dvh] flex-col overflow-hidden">
-      {/* Star field background */}
-      <StarsBackground count={40} factor={0.04} speed={60} />
+      {/* Galaxy background */}
+      <Galaxy
+        hueShift={42}
+        density={0.35}
+        starSpeed={0.2}
+        speed={0.4}
+        glowIntensity={0.15}
+        saturation={0.1}
+        mouseRepulsion={false}
+        twinkleIntensity={0.3}
+        transparent
+      />
 
       <div className="relative z-10 mx-auto w-full max-w-lg px-5 py-8 sm:px-6 sm:py-10 space-y-6">
         {/* Header */}
