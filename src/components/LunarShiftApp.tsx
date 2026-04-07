@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Copy, Sparkle } from '@phosphor-icons/react'
+import { StarsBackground } from './StarsBackground'
 import {
   gregorianToHijri,
   hijriDisplay,
@@ -172,17 +173,8 @@ export default function LunarShiftApp() {
   if (!dob) {
     return (
       <div className="relative flex min-h-[100dvh] flex-col items-center justify-center overflow-hidden px-6 py-12">
-        {/* Atmospheric background — two soft radial glows */}
-        <div className="pointer-events-none absolute inset-0 -z-0">
-          <div
-            className="animate-breathe absolute left-1/2 top-1/4 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[120px] opacity-30"
-            style={{ background: 'radial-gradient(circle, oklch(0.76 0.12 80 / 0.15), transparent 70%)' }}
-          />
-          <div
-            className="absolute left-1/4 top-2/3 h-[400px] w-[400px] rounded-full blur-[100px] opacity-20"
-            style={{ background: 'radial-gradient(circle, oklch(0.4 0.05 270 / 0.2), transparent 70%)' }}
-          />
-        </div>
+        {/* Star field background */}
+        <StarsBackground count={60} factor={0.06} speed={40} />
 
         <div className="relative z-10 flex w-full max-w-sm flex-col items-center gap-10">
           {/* Brand — oversized, sculptural */}
@@ -282,12 +274,8 @@ export default function LunarShiftApp() {
   // ─── DASHBOARD ───────────────────────────
   return (
     <div className="relative flex min-h-[100dvh] flex-col overflow-hidden">
-      {/* Background */}
-      <div className="pointer-events-none fixed inset-0 -z-0">
-        <div className="absolute left-1/2 top-0 h-[500px] w-[500px] -translate-x-1/2 rounded-full blur-[140px] opacity-20"
-          style={{ background: 'radial-gradient(circle, oklch(0.76 0.12 80 / 0.12), transparent 70%)' }}
-        />
-      </div>
+      {/* Star field background */}
+      <StarsBackground count={40} factor={0.04} speed={60} />
 
       <div className="relative z-10 mx-auto w-full max-w-lg px-5 py-8 sm:px-6 sm:py-10 space-y-6">
         {/* Header */}
