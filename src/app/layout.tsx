@@ -38,6 +38,10 @@ export const metadata: Metadata = {
     description: 'Know your Hijri age. Find your next Hijri birthday.',
     type: 'website',
   },
+  icons: {
+    icon: '/favicon.png',
+    shortcut: '/favicon.png',
+  },
 }
 
 export default function RootLayout({
