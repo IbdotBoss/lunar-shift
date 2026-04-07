@@ -232,7 +232,7 @@ export default function LunarShiftApp() {
               <input
                 id="dob-input"
                 type="date"
-                value={dateInputValue}
+                {...(dateInputValue ? { value: dateInputValue } : {})}
                 onChange={(e) => handleDateChange(e.target.value)}
                 max={dobToUrlParam(TODAY)}
                 min="1935-01-01"
