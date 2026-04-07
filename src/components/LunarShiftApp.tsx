@@ -217,28 +217,29 @@ export default function LunarShiftApp() {
                 ? 'border-gold-dim/40 bg-deep/90 shadow-[0_0_30px_-8px_oklch(0.76_0.12_80/0.08)]'
                 : 'border-neutral-800/60 bg-deep/60 backdrop-blur-xl'
             }`}
+            onClick={() => document.getElementById('dob-input')?.focus()}
           >
-            <div className="px-5 pt-4 pb-2">
+            <div className="px-5 pt-4 pb-2 cursor-text">
               <label
                 htmlFor="dob-input"
-                className="block text-[10px] font-medium tracking-widest uppercase"
+                className="block text-[10px] font-medium tracking-widest uppercase cursor-text"
                 style={{ fontFamily: 'var(--font-inria)', color: inputFocused ? 'oklch(0.76 0.12 80)' : 'oklch(0.5 0.01 285)' }}
               >
                 Date of birth
               </label>
             </div>
-            <div className="px-4 pb-5">
+            <div className="px-4 pb-5 cursor-text">
               <input
                 id="dob-input"
                 type="date"
-                defaultValue={dateInputValue || undefined}
+                value={dateInputValue}
                 onChange={(e) => handleDateChange(e.target.value)}
                 max={dobToUrlParam(TODAY)}
                 min="1935-01-01"
                 onFocus={() => setInputFocused(true)}
                 onBlur={() => setInputFocused(false)}
-                className="w-full rounded-lg bg-transparent px-4 py-3 text-base text-neutral-50 outline-none transition-all duration-300"
-                style={{ fontFamily: 'var(--font-inria)' }}
+                className="w-full bg-[var(--color-deep)]/60 px-4 py-3 text-base text-neutral-50 outline-none transition-all duration-300 rounded-lg border border-neutral-800/40 cursor-pointer"
+                style={{ fontFamily: 'var(--font-inria)', colorScheme: 'dark' }}
                 autoFocus
               />
             </div>
