@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CopyButton } from './CopyButton'
 import Galaxy from './Galaxy'
+import DatePicker from './DatePicker'
 import {
   gregorianToHijri,
   hijriDisplay,
@@ -67,7 +68,6 @@ function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
 export default function LunarShiftApp() {
   const [dob, setDob] = useState<Date | null>(null)
   const [dateInputValue, setDateInputValue] = useState('')
-  const [inputFocused, setInputFocused] = useState(false)
 
   // Read URL on mount
   useEffect(() => {
@@ -207,41 +207,25 @@ export default function LunarShiftApp() {
             </p>
           </motion.div>
 
-          {/* Date input */}
+          {/* Date picker — custom calendar, no native mobile picker */}
           <motion.div
             initial={{ opacity: 0, y: 16, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.5, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
-            className={`group relative w-full rounded-2xl border transition-all duration-300 ${
-              inputFocused
-                ? 'border-gold-dim/40 bg-deep/90 shadow-[0_0_30px_-8px_oklch(0.76 0.12 80/0.08)]'
-                : 'border-neutral-800/60 bg-deep/60 backdrop-blur-xl'
-            }`}
           >
-            <div className="px-5 pt-4 pb-2">
+            <div className="mb-2 px-2">
               <label
-                htmlFor="dob-input"
-                className="block text-[10px] font-medium tracking-widest uppercase cursor-text"
-                style={{ fontFamily: 'var(--font-inria)', color: inputFocused ? 'oklch(0.76 0.12 80)' : 'oklch(0.5 0.01 285)' }}
+                className="block text-[10px] font-medium tracking-widest uppercase"
+                style={{ fontFamily: 'var(--font-inria)', color: 'oklch(0.5 0.01 285)' }}
               >
                 Date of birth
               </label>
             </div>
-            <div className="px-4 pb-5 cursor-text">
-              <input
-                id="dob-input"
-                type="date"
-                {...(dateInputValue ? { value: dateInputValue } : {})}
-                onChange={(e) => handleDateChange(e.target.value)}
-                max={dobToUrlParam(TODAY)}
-                min="1935-01-01"
-                onFocus={() => setInputFocused(true)}
-                onBlur={() => setInputFocused(false)}
-                className="w-full bg-[var(--color-deep)]/60 px-4 py-3 text-base text-neutral-50 outline-none transition-all duration-300 rounded-lg border border-neutral-800/40 cursor-pointer"
-                style={{ fontFamily: 'var(--font-inria)', colorScheme: 'dark' }}
-                autoFocus
-              />
-            </div>
+            <DatePicker
+              onSelect={handleDateChange}
+              current={dateInputValue || undefined}
+              maxDate={dobToUrlParam(TODAY)}
+            />
           </motion.div>
 
           {/* Moon dots visual motif */}
