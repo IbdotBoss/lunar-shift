@@ -94,7 +94,7 @@ export default function DobPicker({ onSelect, current }: Props) {
             >
               <ChevronLeft className="w-5 h-5 text-neutral-400" />
             </button>
-            <span className="text-sm font-medium text-neutral-200" style={{ fontFamily: 'var(--font-inria)' }}>
+            <span className="text-sm font-medium text-neutral-200" style={{ fontFamily: 'var(--font-geist)' }}>
               Select your birth year
             </span>
             <button type="button" onClick={nextDecade}
@@ -118,7 +118,7 @@ export default function DobPicker({ onSelect, current }: Props) {
                     ? 'bg-gold text-deep'
                     : 'text-neutral-300 hover:bg-white/10 active:bg-white/15'
                 }`}
-                style={{ fontFamily: 'var(--font-inria)' }}
+                  style={{ fontFamily: 'var(--font-geist)' }}
               >
                 {y}
               </motion.button>
@@ -142,7 +142,7 @@ export default function DobPicker({ onSelect, current }: Props) {
             >
               <ChevronLeft className="w-5 h-5 text-neutral-400" />
             </button>
-            <span className="text-sm font-medium text-neutral-200" style={{ fontFamily: 'var(--font-inria)' }}>
+            <span className="text-sm font-medium text-neutral-200" style={{ fontFamily: 'var(--font-geist)' }}>
               {year}
             </span>
             <div className="w-9" /> {/* spacer */}
@@ -164,9 +164,9 @@ export default function DobPicker({ onSelect, current }: Props) {
                         ? 'text-neutral-700 cursor-not-allowed'
                         : 'text-neutral-300 hover:bg-white/10 active:bg-white/15'
                   }`}
-                  style={{ fontFamily: 'var(--font-inria)' }}
-                >
-                  {MONTH_ABBREVS[m]}
+                  style={{ fontFamily: 'var(--font-geist)' }}
+              >
+                {MONTH_ABBREVS[m]}
                 </motion.button>
               )
             })}
@@ -189,7 +189,7 @@ export default function DobPicker({ onSelect, current }: Props) {
             >
               <ChevronLeft className="w-5 h-5 text-neutral-400" />
             </button>
-            <span className="text-sm font-medium text-neutral-200" style={{ fontFamily: 'var(--font-inria)' }}>
+            <span className="text-sm font-medium text-neutral-200" style={{ fontFamily: 'var(--font-geist)' }}>
               {MONTH_NAMES[month]} {year}
             </span>
             <button type="button" onClick={nextMonth}
@@ -202,7 +202,7 @@ export default function DobPicker({ onSelect, current }: Props) {
 
           <div className="grid grid-cols-7 gap-1 mb-1">
             {DAYS_OF_WEEK.map(d => (
-              <div key={d} className="text-center text-[10px] tracking-widest text-neutral-600 py-2" style={{ fontFamily: 'var(--font-inria)' }}>
+              <div key={d} className="text-center text-[10px] tracking-widest text-neutral-600 py-2" style={{ fontFamily: 'var(--font-geist)' }}>
                 {d}
               </div>
             ))}
@@ -226,13 +226,11 @@ export default function DobPicker({ onSelect, current }: Props) {
                     ${isSelected
                       ? 'bg-gold text-deep'
                       : isFuture
-                        ? 'text-neutral-700 cursor-not-allowed'
-                        : isToday
-                          ? 'text-gold hover:bg-white/10 ring-1 ring-gold/30'
-                          : 'text-neutral-300 hover:bg-white/10 active:bg-white/15'
+                        ? 'text-neutral-500/40 cursor-not-allowed'
+                        : 'text-neutral-300 hover:bg-white/10 active:bg-white/15'
                     }
                   `}
-                  style={{ fontFamily: 'var(--font-inria)' }}
+                  style={{ fontFamily: 'var(--font-geist)' }}
                 >
                   {day.getDate()}
                 </motion.button>

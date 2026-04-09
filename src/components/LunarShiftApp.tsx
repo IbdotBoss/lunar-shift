@@ -227,26 +227,7 @@ export default function LunarShiftApp() {
             />
           </motion.div>
 
-          {/* Moon dots visual motif */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.35 }}
-            className="flex items-center gap-2"
-          >
-            {[0, 1, 2, 3, 4].map((i) => (
-              <motion.div
-                key={i}
-                layout
-                className="h-1 rounded-full"
-                style={{
-                  width: 16 + i * 4,
-                  background: i < 3 ? 'oklch(0.76 0.12 80)' : 'oklch(0.35 0.01 285)',
-                  transition: `all 0.4s ease ${i * 0.08}s`,
-                }}
-              />
-            ))}
-          </motion.div>
+{/* Spacer — no decorative slop */}
 
           {/* Version */}
           <motion.p
