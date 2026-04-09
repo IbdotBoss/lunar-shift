@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CopyButton } from './CopyButton'
 import Galaxy from './Galaxy'
-import DatePicker from './DatePicker'
+import DobPicker from './DatePicker'
 import {
   gregorianToHijri,
   hijriDisplay,
@@ -221,10 +221,9 @@ export default function LunarShiftApp() {
                 Date of birth
               </label>
             </div>
-            <DatePicker
+            <DobPicker
               onSelect={handleDateChange}
               current={dateInputValue || undefined}
-              maxDate={dobToUrlParam(TODAY)}
             />
           </motion.div>
 
