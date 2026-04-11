@@ -3,6 +3,8 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CopyButton } from './CopyButton'
+import { useToast } from './Toast'
+import { Share2 } from 'lucide-react'
 import Galaxy from './Galaxy'
 import DobPicker from './DatePicker'
 import {
@@ -66,6 +68,7 @@ function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
    Main
    ────────────────────────────────────────── */
 export default function LunarShiftApp() {
+  const { show: showToast, toastElement } = useToast()
   const [dob, setDob] = useState<Date | null>(null)
   const [dateInputValue, setDateInputValue] = useState('')
 
@@ -278,10 +281,26 @@ export default function LunarShiftApp() {
                 {new Date(dateInputValue).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
               </p>
             </div>
-            <CopyButton
-              content={hijriCopyText}
-              className="h-8 w-8 rounded-lg border border-neutral-800/60 bg-deep/40 text-neutral-500 hover:border-neutral-700 hover:text-neutral-300 outline-none"
-            />
+            <div className="flex items-center gap-2">
+              <CopyButton
+                content={hijriCopyText}
+                className="h-8 w-8 rounded-lg border border-neutral-800/60 bg-deep/40 text-neutral-500 hover:border-neutral-700 hover:text-neutral-300 outline-none"
+              />
+              <button
+                onClick={() => {
+                  const url = window.location.href
+                  if (navigator.share) {
+                    navigator.share({ url, title: 'Lunar Shift', text: 'Check out my Hijri birthday!' }).catch(() => {})
+                  } else {
+                    navigator.clipboard.writeText(url).then(() => showToast('Link copied'))
+                  }
+                }}
+                className="h-8 rounded-lg border border-neutral-800/60 bg-deep/40 px-3 text-[10px] font-medium uppercase tracking-widest text-neutral-500 transition-colors hover:border-gold-dim/40 hover:text-gold-dim outline-none"
+                style={{ fontFamily: 'var(--font-inria)' }}
+              >
+                share
+              </button>
+            </div>
           </div>
         </Reveal>
 
@@ -519,6 +538,7 @@ export default function LunarShiftApp() {
           </p>
         </Reveal>
       </div>
+      {toastElement}
     </div>
   )
 }
