@@ -7,6 +7,7 @@ import { useToast } from './Toast'
 import { Share2 } from 'lucide-react'
 import Galaxy from './Galaxy'
 import DobPicker from './DatePicker'
+import HijriInput from './HijriInput'
 import {
   gregorianToHijri,
   hijriDisplay,
@@ -69,6 +70,7 @@ function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
    ────────────────────────────────────────── */
 export default function LunarShiftApp() {
   const { show: showToast, toastElement } = useToast()
+  const [mode, setMode] = useState<"gregorian" | "hijri">("gregorian")
   const [dob, setDob] = useState<Date | null>(null)
   const [dateInputValue, setDateInputValue] = useState('')
 
@@ -208,24 +210,61 @@ export default function LunarShiftApp() {
             </p>
           </motion.div>
 
-          {/* Date picker — custom calendar, no native mobile picker */}
+          {/* Mode toggle */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+            className="flex items-center gap-1 rounded-xl border border-neutral-800/40 bg-deep/40 p-1"
+          >
+            <button
+              onClick={() => setMode('gregorian')}
+              className={mode === 'gregorian'
+                ? 'flex-1 rounded-lg px-3 py-2 text-[10px] font-medium tracking-widest uppercase transition-all bg-gold/10 text-gold border border-gold-dim/20'
+                : 'flex-1 rounded-lg px-3 py-2 text-[10px] font-medium tracking-widest uppercase transition-all text-neutral-500 hover:text-neutral-300'
+              }
+              style={{ fontFamily: 'var(--font-geist)' }}
+            >
+              Gregorian → Hijri
+            </button>
+            <button
+              onClick={() => setMode('hijri')}
+              className={mode === 'hijri'
+                ? 'flex-1 rounded-lg px-3 py-2 text-[10px] font-medium tracking-widest uppercase transition-all bg-gold/10 text-gold border border-gold-dim/20'
+                : 'flex-1 rounded-lg px-3 py-2 text-[10px] font-medium tracking-widest uppercase transition-all text-neutral-500 hover:text-neutral-300'
+              }
+              style={{ fontFamily: 'var(--font-geist)' }}
+            >
+              Hijri → Gregorian
+            </button>
+          </motion.div>
+
+          {/* Date picker — conditional on mode */}
           <motion.div
             initial={{ opacity: 0, y: 16, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.5, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
           >
-            <div className="mb-2 px-2">
-              <label
-                className="block text-[10px] font-medium tracking-widest uppercase"
-                style={{ fontFamily: 'var(--font-inria)', color: 'oklch(0.5 0.01 285)' }}
-              >
-                Date of birth
-              </label>
-            </div>
-            <DobPicker
-              onSelect={handleDateChange}
-              current={dateInputValue || undefined}
-            />
+            {mode === 'gregorian' ? (
+              <>
+                <div className="mb-2 px-2">
+                  <label
+                    className="block text-[10px] font-medium tracking-widest uppercase"
+                    style={{ fontFamily: 'var(--font-inria)', color: 'oklch(0.5 0.01 285)' }}
+                  >
+                    Date of birth
+                  </label>
+                </div>
+                <DobPicker
+                  onSelect={handleDateChange}
+                  current={dateInputValue || undefined}
+                />
+              </>
+            ) : (
+              <HijriInput
+                onSelect={handleDateChange}
+              />
+            )}
           </motion.div>
 
 {/* Spacer — no decorative slop */}
