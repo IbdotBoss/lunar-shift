@@ -78,7 +78,6 @@ export default function LunarShiftApp() {
       const parsed = dobFromUrlParam(dobParam)
       if (parsed) {
         setDob(parsed)
-        setDateInputValue(dobToUrlParam(parsed))
       }
     }
   }, [])
@@ -92,7 +91,6 @@ export default function LunarShiftApp() {
   }, [])
 
   const handleDateChange = useCallback((value: string) => {
-    setDateInputValue(value)
     const parts = value.split('-').map(Number)
     if (parts.length === 3 && parts[0] >= 1935 && parts[0] < 2077) {
       const d = new Date(parts[0], parts[1] - 1, parts[2])
@@ -267,7 +265,6 @@ export default function LunarShiftApp() {
               <button
                 onClick={() => {
                   setDob(null)
-                  setDateInputValue('')
                   updateUrl(null)
                 }}
                 className="text-xs text-neutral-500 transition-colors hover:text-neutral-300 font-medium"

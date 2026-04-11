@@ -38,22 +38,12 @@ export default function OpenGraphImage() {
         </div>
         <div
           style={{
-            display: 'flex',
-            gap: 8,
+            fontSize: 18,
+            color: '#555566',
             marginTop: 48,
           }}
         >
-          {[2, 4, 8, 12, 16].map((w: number, i: number) => (
-            <div
-              key={i}
-              style={{
-                width: w,
-                height: 4,
-                borderRadius: 999,
-                backgroundColor: i < 3 ? '#c8a840' : '#333340',
-              }}
-            />
-          ))}
+          V0.1.0 · UMM AL-QURA
         </div>
       </div>
     ),

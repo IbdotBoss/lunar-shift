@@ -109,26 +109,38 @@ export function nextHijriBirthday(hm: number, hd: number, after: Date): { date: 
  * Find a Hijri birthday in a specific Gregorian year.
  * Returns the Gregorian date if found.
  */
+/**
+ * Cache: builds a Hijri lookup map for a full Gregorian year.
+ * Key: "month-day" → { gDate, hijriYear }
+ * Computed once per year, reused across calls.
+ */
+const yearCache = new Map<number, Map<string, { date: Date; hijriYear: number }>>()
+
+function getYearMap(gYear: number): Map<string, { date: Date; hijriYear: number }> {
+  const cached = yearCache.get(gYear)
+  if (cached) return cached
+
+  const map = new Map<string, { date: Date; hijriYear: number }>()
+  const start = new Date(gYear, 0, 1)
+  const end = new Date(gYear, 11, 31)
+  const cur = new Date(start)
+
+  while (cur <= end) {
+    const h = gregorianToHijri(cur)
+    const key = `${h.month}-${h.day}`
+    if (!map.has(key)) {
+      map.set(key, { date: new Date(cur), hijriYear: h.year })
+    }
+    cur.setDate(cur.getDate() + 1)
+  }
+
+  yearCache.set(gYear, map)
+  return map
+}
+
 export function findHijriBirthdayInYear(hm: number, hd: number, gYear: number): { date: Date; hijriYear: number } | null {
-  // Wide search window covering the full drift range
-  for (let cm = 0; cm < 12; cm++) {
-    const dim = new Date(gYear, cm + 1, 0).getDate()
-    for (let cd = 1; cd <= dim; cd++) {
-      const h = gregorianToHijri(new Date(gYear, cm, cd))
-      if (h.month === hm && h.day === hd) {
-        return { date: new Date(gYear, cm, cd), hijriYear: h.year }
-      }
-    }
-  }
-  // Might wrap into next year if the date is very early Jan
-  for (let cd = 1; cd <= 31; cd++) {
-    const h = gregorianToHijri(new Date(gYear, 0, cd))
-    if (h.month === hm) {
-      if (h.day === hd) return { date: new Date(gYear, 0, cd), hijriYear: h.year }
-      break
-    }
-  }
-  return null
+  const map = getYearMap(gYear)
+  return map.get(`${hm}-${hd}`) ?? null
 }
 
 /**

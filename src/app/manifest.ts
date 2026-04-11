@@ -10,7 +10,7 @@ export default function manifest() {
     icons: [
       {
         src: '/favicon.png',
-        sizes: '277x277',
+        sizes: '256x256',
         type: 'image/png',
         purpose: 'any',
       },
