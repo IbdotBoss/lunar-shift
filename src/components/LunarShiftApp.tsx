@@ -21,6 +21,8 @@ import {
   dobFromUrlParam,
   MONTH_NAMES,
   toArabicNum,
+  CALENDAR_LABELS,
+  type CalendarMethod,
 } from '@/lib/hijri'
 
 const TODAY = new Date()
@@ -71,6 +73,7 @@ function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
 export default function LunarShiftApp() {
   const { show: showToast, toastElement } = useToast()
   const [mode, setMode] = useState<"gregorian" | "hijri">("gregorian")
+  const [calendarMethod, setCalendarMethod] = useState<CalendarMethod>("umalqura")
   const [dob, setDob] = useState<Date | null>(null)
   const [dateInputValue, setDateInputValue] = useState('')
 
@@ -79,6 +82,10 @@ export default function LunarShiftApp() {
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
     const dobParam = params.get('dob')
+    const calParam = params.get('calendar') as CalendarMethod | null
+    if (calParam && (calParam === 'umalqura' || calParam === 'tabular')) {
+      setCalendarMethod(calParam)
+    }
     if (dobParam) {
       const parsed = dobFromUrlParam(dobParam)
       if (parsed) {
@@ -90,10 +97,14 @@ export default function LunarShiftApp() {
   const updateUrl = useCallback((d: Date | null) => {
     if (typeof window === 'undefined') return
     const url = new URL(window.location.href)
-    if (d) url.searchParams.set('dob', dobToUrlParam(d))
-    else url.searchParams.delete('dob')
+    if (d) {
+      url.searchParams.set('dob', dobToUrlParam(d))
+    } else {
+      url.searchParams.delete('dob')
+    }
+    url.searchParams.set('calendar', calendarMethod)
     window.history.replaceState({}, '', url.toString())
-  }, [])
+  }, [calendarMethod])
 
   const handleDateChange = useCallback((value: string) => {
     const parts = value.split('-').map(Number)
@@ -110,23 +121,23 @@ export default function LunarShiftApp() {
     }
   }, [updateUrl])
 
-  const hijriDob = useMemo(() => (dob ? gregorianToHijri(dob) : null), [dob])
+  const hijriDob = useMemo(() => (dob ? gregorianToHijri(dob, calendarMethod) : null), [dob, calendarMethod])
   const gregorianAge = useMemo(() => (dob ? calcAge(dob, TODAY) : 0), [dob])
   const hijriAge = useMemo(() => {
     if (!hijriDob) return 0
-    const todayH = gregorianToHijri(TODAY)
+    const todayH = gregorianToHijri(TODAY, calendarMethod)
     let age = todayH.year - hijriDob.year
     if (todayH.month < hijriDob.month || (todayH.month === hijriDob.month && todayH.day < hijriDob.day)) age--
     return Math.max(0, age)
-  }, [hijriDob])
+  }, [hijriDob, calendarMethod])
 
   // Next birthday: try current year first
   const nextBirthday = useMemo(() => {
     if (!hijriDob) return null
-    let b = findHijriBirthdayInYear(hijriDob.month, hijriDob.day, TODAY.getFullYear())
+    let b = findHijriBirthdayInYear(hijriDob.month, hijriDob.day, TODAY.getFullYear(), calendarMethod)
     if (b && b.date >= TODAY) return b
-    return findHijriBirthdayInYear(hijriDob.month, hijriDob.day, TODAY.getFullYear() + 1)
-  }, [hijriDob])
+    return findHijriBirthdayInYear(hijriDob.month, hijriDob.day, TODAY.getFullYear() + 1, calendarMethod)
+  }, [hijriDob, calendarMethod])
 
   const daysUntilNext = useMemo(() => {
     if (!nextBirthday) return null
@@ -138,7 +149,7 @@ export default function LunarShiftApp() {
     if (!hijriDob) return []
     const results: { date: Date; hijriYear: number; passed: boolean }[] = []
     for (let cy = TODAY.getFullYear() - 3; cy <= TODAY.getFullYear() + 7; cy++) {
-      const b = findHijriBirthdayInYear(hijriDob.month, hijriDob.day, cy)
+      const b = findHijriBirthdayInYear(hijriDob.month, hijriDob.day, cy, calendarMethod)
       if (b) {
         results.push({
           date: b.date,
@@ -148,7 +159,7 @@ export default function LunarShiftApp() {
       }
     }
     return results
-  }, [hijriDob])
+  }, [hijriDob, calendarMethod])
 
   // Copy hijri date string
   const hijriCopyText = useMemo(
@@ -269,6 +280,30 @@ export default function LunarShiftApp() {
 
 {/* Spacer — no decorative slop */}
 
+          {/* Calendar method selector */}
+          <div className="flex items-center gap-2">
+            {(Object.entries(CALENDAR_LABELS) as [CalendarMethod, string][]).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => {
+                  setCalendarMethod(key)
+                  // Update URL immediately
+                  const url = new URL(window.location.href)
+                  url.searchParams.set('calendar', key)
+                  window.history.replaceState({}, '', url.toString())
+                }}
+                className={`rounded-lg px-3 py-1.5 text-[9px] font-medium tracking-widest uppercase transition-all ${
+                  calendarMethod === key
+                    ? 'border border-gold-dim/20 text-gold'
+                    : 'text-neutral-600 hover:text-neutral-400'
+                }`}
+                style={{ fontFamily: 'var(--font-geist)' }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
           {/* Version */}
           <motion.p
             initial={{ opacity: 0 }}
@@ -276,7 +311,7 @@ export default function LunarShiftApp() {
             transition={{ duration: 0.5, delay: 0.5 }}
             className="font-mono text-[10px] tracking-widest uppercase text-neutral-700"
           >
-            v0.1.0 · umm al-qura
+            v0.1.0 · {calendarMethod === 'umalqura' ? 'umm al-qura' : 'tabular'}
           </motion.p>
         </div>
       </div>

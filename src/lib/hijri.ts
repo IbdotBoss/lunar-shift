@@ -39,13 +39,26 @@ export function hijriCompact(h: HijriDate): string {
   return `${h.day} ${MONTH_NAMES[h.month].slice(0, 3)} ${h.year}`
 }
 
+export type CalendarMethod = 'umalqura' | 'tabular'
+
+export const CALENDAR_LABELS: Record<CalendarMethod, string> = {
+  umalqura: 'Umm al-Qura (Saudi)',
+  tabular: 'Tabular (Astronomical)',
+}
+
+const CALENDAR_IDS: Record<CalendarMethod, string> = {
+  umalqura: 'islamic-umalqura',
+  tabular: 'islamic',
+}
+
 /**
- * Gregorian Date → Hijri Date (Umm al-Qura)
+ * Gregorian Date → Hijri Date
  * Uses native Intl — works in all modern browsers, zero deps.
  */
-export function gregorianToHijri(date: Date): HijriDate {
-  const parts = new Intl.DateTimeFormat('en-CA-u-ca-islamic-umalqura', {
-    calendar: 'islamic-umalqura',
+export function gregorianToHijri(date: Date, method: CalendarMethod = 'umalqura'): HijriDate {
+  const calendarId = CALENDAR_IDS[method]
+  const parts = new Intl.DateTimeFormat('en-CA-u-ca-' + calendarId, {
+    calendar: calendarId,
     day: 'numeric',
     month: 'numeric',
     year: 'numeric',
@@ -114,10 +127,11 @@ export function nextHijriBirthday(hm: number, hd: number, after: Date): { date: 
  * Key: "month-day" → { gDate, hijriYear }
  * Computed once per year, reused across calls.
  */
-const yearCache = new Map<number, Map<string, { date: Date; hijriYear: number }>>()
+const yearCache = new Map<string, Map<string, { date: Date; hijriYear: number }>>()
 
-function getYearMap(gYear: number): Map<string, { date: Date; hijriYear: number }> {
-  const cached = yearCache.get(gYear)
+function getYearMap(gYear: number, method: CalendarMethod = 'umalqura'): Map<string, { date: Date; hijriYear: number }> {
+  const key = `${gYear}-${method}`
+  const cached = yearCache.get(key)
   if (cached) return cached
 
   const map = new Map<string, { date: Date; hijriYear: number }>()
@@ -126,7 +140,7 @@ function getYearMap(gYear: number): Map<string, { date: Date; hijriYear: number 
   const cur = new Date(start)
 
   while (cur <= end) {
-    const h = gregorianToHijri(cur)
+    const h = gregorianToHijri(cur, method)
     const key = `${h.month}-${h.day}`
     if (!map.has(key)) {
       map.set(key, { date: new Date(cur), hijriYear: h.year })
@@ -134,12 +148,12 @@ function getYearMap(gYear: number): Map<string, { date: Date; hijriYear: number 
     cur.setDate(cur.getDate() + 1)
   }
 
-  yearCache.set(gYear, map)
+  yearCache.set(key, map)
   return map
 }
 
-export function findHijriBirthdayInYear(hm: number, hd: number, gYear: number): { date: Date; hijriYear: number } | null {
-  const map = getYearMap(gYear)
+export function findHijriBirthdayInYear(hm: number, hd: number, gYear: number, method: CalendarMethod = 'umalqura'): { date: Date; hijriYear: number } | null {
+  const map = getYearMap(gYear, method)
   return map.get(`${hm}-${hd}`) ?? null
 }
 
